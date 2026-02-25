@@ -6,6 +6,7 @@ Tests for the Panda Guard Merkle tree.
 
 from __future__ import annotations
 
+import hashlib
 import numpy as np
 import pytest
 
@@ -117,6 +118,42 @@ class TestProofs:
         for i in range(4):
             proof = small_tree.get_proof(i)
             assert MerkleTree.verify_proof(proof)
+
+    def test_manual_construction_verify_proof(self):
+        """Manually construct a tree and proof to verify logic independently."""
+        # 1. Create leaf hashes
+        l1 = hash_text("leaf1")
+        l2 = hash_text("leaf2")
+        l3 = hash_text("leaf3")
+        l4 = hash_text("leaf4")
+
+        # 2. Manually compute parent hashes (simulating _hash_pair)
+        def manual_hash_pair(left, right):
+            return hashlib.sha256((left + right).encode("utf-8")).hexdigest()
+
+        # Tree structure:
+        #       Root
+        #      /    \
+        #    H12    H34
+        #    / \    / \
+        #   L1 L2  L3 L4
+        h12 = manual_hash_pair(l1, l2)
+        h34 = manual_hash_pair(l3, l4)
+        root = manual_hash_pair(h12, h34)
+
+        # 3. Construct proof for l3 (index 2)
+        # Path: l3 -> h34 -> root
+        # Siblings: l4 (right of l3), h12 (left of h34)
+        proof = MerkleProof(
+            leaf_index=2,
+            leaf_hash=l3,
+            proof_hashes=[l4, h12],
+            proof_directions=["right", "left"],
+            root_hash=root,
+        )
+
+        # 4. Verify
+        assert MerkleTree.verify_proof(proof)
 
 
 # ── Tamper Detection ─────────────────────────────────────────────────────────
