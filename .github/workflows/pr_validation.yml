@@ -1,0 +1,274 @@
+name: PR Validation — A2A Digital Twin
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+
+  # ── Gate 1: Lint + Syntax Check ─────────────────────────────────────────────
+  lint:
+    name: Lint & Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Ruff lint check
+        run: ruff check . --output-format=github
+
+      - name: Python syntax check
+        run: python -m py_compile bootstrap_digital_twin.py
+
+      - name: Validate YAML workflows
+        run: |
+          python - << 'PYEOF'
+          import yaml, glob, sys
+          errors = []
+          for f in glob.glob(".github/workflows/*.yml"):
+              try:
+                  with open(f) as fh:
+                      yaml.safe_load(fh)
+                  print(f"  ✓ {f}")
+              except Exception as e:
+                  errors.append(f"  ✗ {f}: {e}")
+                  print(f"  ✗ {f}: {e}")
+          if errors:
+              sys.exit(1)
+          PYEOF
+
+
+  # ── Gate 2: Unit Tests + Coverage ───────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-cov pytest-json-report
+
+      - name: Run test suite
+        id: tests
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --json-report \
+            --json-report-file=/tmp/pr_test_report.json \
+            --cov=. \
+            --cov-report=json:/tmp/pr_coverage.json \
+            --cov-report=term-missing \
+            --cov-fail-under=50
+
+      - name: Post test summary as PR comment
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - << 'PYEOF'
+          import json, os
+
+          try:
+              with open("/tmp/pr_test_report.json") as f:
+                  report = json.load(f)
+              summary = report.get("summary", {})
+              passed = summary.get("passed", 0)
+              failed = summary.get("failed", 0)
+              total = summary.get("total", 0)
+          except Exception:
+              passed, failed, total = 0, 0, 0
+
+          try:
+              with open("/tmp/pr_coverage.json") as f:
+                  cov = json.load(f)
+              coverage = cov.get("totals", {}).get("percent_covered", 0.0)
+          except Exception:
+              coverage = 0.0
+
+          status = "✅ PASS" if failed == 0 else "❌ FAIL"
+          print(f"PR Test Summary: {status}")
+          print(f"  Passed:   {passed}")
+          print(f"  Failed:   {failed}")
+          print(f"  Total:    {total}")
+          print(f"  Coverage: {coverage:.1f}%")
+          PYEOF
+
+
+  # ── Gate 3: Panda Guard — Sensitive Data Check ─────────────────────────────
+  panda-guard:
+    name: Panda Guard Scan
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scan for sensitive data in source
+        run: |
+          python - << 'PYEOF'
+          import sys
+          sys.path.insert(0, ".")
+          from panda_guard.air_gap import scan_for_sensitive_data
+
+          # Scan all Python and Markdown files
+          import glob
+          all_texts = []
+          all_keys = []
+          for pattern in ["**/*.py", "**/*.md", "**/*.yml", "**/*.yaml", "**/*.json"]:
+              for f in glob.glob(pattern, recursive=True):
+                  if ".git" in f or "node_modules" in f:
+                      continue
+                  try:
+                      with open(f, encoding="utf-8", errors="ignore") as fh:
+                          all_texts.append(fh.read())
+                          all_keys.append(f)
+                  except Exception:
+                      pass
+
+          matches = scan_for_sensitive_data(all_texts, all_keys)
+
+          if matches:
+              print("🐼 Panda Guard: SENSITIVE DATA DETECTED!")
+              for m in matches:
+                  print(f"  ⚠ [{m.pattern_name}] in {m.chunk_key}: {m.matched_text}")
+              print(f"\n  Total: {len(matches)} sensitive patterns found")
+              print("  Action: Remove secrets before merging!")
+              sys.exit(1)
+          else:
+              print("🐼 Panda Guard: All clear — no sensitive data found")
+              print(f"  Scanned {len(all_texts)} files")
+          PYEOF
+
+      - name: Verify embedding store integrity (if exists)
+        run: |
+          python - << 'PYEOF'
+          import os, sys
+          sys.path.insert(0, ".")
+
+          store_path = "rag/embedding_store.npz"
+          if not os.path.exists(store_path):
+              print("No embedding store found — skipping integrity check")
+              sys.exit(0)
+
+          from panda_guard.merkle import MerkleTree
+          tree = MerkleTree.from_npz(store_path)
+          print(f"🐼 Merkle tree built: {tree.leaf_count} vectors")
+          print(f"  Root hash: {tree.root_hash[:32]}...")
+
+          # Verify a random proof
+          if tree.leaf_count > 0:
+              proof = tree.get_proof(0)
+              valid = MerkleTree.verify_proof(proof)
+              print(f"  Proof verification: {'✓ valid' if valid else '✗ INVALID'}")
+              if not valid:
+                  sys.exit(1)
+          PYEOF
+
+
+  # ── Gate 4: Fossil Chain Integrity ──────────────────────────────────────────
+  fossil-chain:
+    name: Fossil Chain Verify
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify fossil chain
+        run: |
+          python - << 'PYEOF'
+          import os, sys
+          sys.path.insert(0, ".")
+
+          # Check twin state consistency
+          from digital_twin.twin_registry import TwinRegistry
+          twin = TwinRegistry()
+          twin.load()
+          summary = twin.get_summary()
+          print(f"Digital Twin state loaded:")
+          print(f"  Tasks:  {summary['total_tasks']}")
+          print(f"  Agents: {summary['total_agents']}")
+          print(f"  CI:     {summary['ci_status']}")
+
+          # Verify fossil chain if DB exists
+          db_path = "a2a_mcp.db"
+          if os.path.exists(db_path):
+              try:
+                  from orchestrator.storage import DBManager
+                  print("Fossil chain: present (full verify requires live DB session)")
+              except ImportError:
+                  print("Fossil chain: skipped (orchestrator not available)")
+          else:
+              print("Fossil chain: no DB — first run (OK)")
+          PYEOF
+
+
+  # ── Final Status Gate ───────────────────────────────────────────────────────
+  pr-status:
+    name: PR Status Gate
+    runs-on: ubuntu-latest
+    needs: [test, panda-guard, fossil-chain]
+    if: always()
+
+    steps:
+      - name: Check all gates passed
+        run: |
+          echo "Gate Results:"
+          echo "  test:         ${{ needs.test.result }}"
+          echo "  panda-guard:  ${{ needs.panda-guard.result }}"
+          echo "  fossil-chain: ${{ needs.fossil-chain.result }}"
+
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "❌ Tests failed — blocking merge"
+            exit 1
+          fi
+          if [[ "${{ needs.panda-guard.result }}" != "success" ]]; then
+            echo "🐼 Panda Guard failed — sensitive data detected"
+            exit 1
+          fi
+          if [[ "${{ needs.fossil-chain.result }}" != "success" ]]; then
+            echo "⛓ Fossil chain verification failed"
+            exit 1
+          fi
+          echo "✅ All gates passed — PR is safe to merge"

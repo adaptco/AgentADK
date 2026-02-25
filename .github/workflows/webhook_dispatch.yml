@@ -1,0 +1,182 @@
+name: Webhook Dispatch — A2A Digital Twin
+
+on:
+  repository_dispatch:
+    types:
+      - webhook_event
+      - airtable_update
+      - external_trigger
+      - ci_rerun
+
+  workflow_dispatch:
+    inputs:
+      event_type:
+        description: "Event type to process"
+        required: true
+        default: "manual_trigger"
+      task_id:
+        description: "Airtable task record ID (optional)"
+        required: false
+      payload:
+        description: "JSON payload (optional)"
+        required: false
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+
+  # ── Parse and Route Event ───────────────────────────────────────────────────
+  route-event:
+    name: Route Webhook Event
+    runs-on: ubuntu-latest
+    outputs:
+      event-type: ${{ steps.parse.outputs.event_type }}
+      task-id: ${{ steps.parse.outputs.task_id }}
+      should-run-pipeline: ${{ steps.parse.outputs.should_run_pipeline }}
+      should-sync-airtable: ${{ steps.parse.outputs.should_sync_airtable }}
+
+    steps:
+      - name: Parse event
+        id: parse
+        run: |
+          # Determine event source and type
+          if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
+            EVENT_TYPE="${{ github.event.action }}"
+            TASK_ID="${{ github.event.client_payload.task_id }}"
+          else
+            EVENT_TYPE="${{ github.event.inputs.event_type }}"
+            TASK_ID="${{ github.event.inputs.task_id }}"
+          fi
+
+          echo "event_type=$EVENT_TYPE" >> "$GITHUB_OUTPUT"
+          echo "task_id=$TASK_ID" >> "$GITHUB_OUTPUT"
+
+          # Route to appropriate jobs
+          case $EVENT_TYPE in
+            webhook_event|external_trigger|manual_trigger)
+              echo "should_run_pipeline=true" >> "$GITHUB_OUTPUT"
+              echo "should_sync_airtable=true" >> "$GITHUB_OUTPUT"
+              ;;
+            airtable_update)
+              echo "should_run_pipeline=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_airtable=true" >> "$GITHUB_OUTPUT"
+              ;;
+            ci_rerun)
+              echo "should_run_pipeline=true" >> "$GITHUB_OUTPUT"
+              echo "should_sync_airtable=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "should_run_pipeline=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_airtable=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+          echo "Event: $EVENT_TYPE | Task: $TASK_ID"
+
+
+  # ── Sync Airtable (if needed) ──────────────────────────────────────────────
+  sync-airtable:
+    name: Sync Airtable
+    runs-on: ubuntu-latest
+    needs: route-event
+    if: needs.route-event.outputs.should-sync-airtable == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt httpx
+
+      - name: Sync Airtable tasks
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+        run: |
+          python - << 'PYEOF'
+          import asyncio, sys
+          sys.path.insert(0, ".")
+          from integrations.airtable.task_schema import AirtableClient
+          from digital_twin.twin_registry import TwinRegistry, TaskTwinNode
+
+          async def sync():
+              client = AirtableClient()
+              twin = TwinRegistry()
+              twin.load()
+              tasks = await client.list_tasks()
+              for t in tasks:
+                  twin.get().tasks[t.record_id] = TaskTwinNode(
+                      task_id=t.record_id,
+                      name=t.name,
+                      airtable_record_id=t.record_id,
+                      status=t.status.value,
+                      browser_actions_total=len(t.browser_steps),
+                  )
+              twin.save()
+              print(f"Synced {len(tasks)} tasks")
+
+          asyncio.run(sync())
+          PYEOF
+
+
+  # ── Trigger Main Pipeline (if needed) ──────────────────────────────────────
+  trigger-pipeline:
+    name: Trigger Main Pipeline
+    runs-on: ubuntu-latest
+    needs: route-event
+    if: needs.route-event.outputs.should-run-pipeline == 'true'
+
+    steps:
+      - name: Dispatch main pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/a2a_twin_pipeline.yml/dispatches" \
+            -d "{\"ref\":\"main\",\"inputs\":{\"airtable_task_id\":\"${{ needs.route-event.outputs.task-id }}\"}}"
+
+          echo "Main pipeline dispatched"
+
+
+  # ── Log Event ──────────────────────────────────────────────────────────────
+  log-event:
+    name: Log Webhook Event
+    runs-on: ubuntu-latest
+    needs: [route-event, sync-airtable, trigger-pipeline]
+    if: always()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update twin with webhook event
+        run: |
+          python - << 'PYEOF'
+          import sys, json
+          sys.path.insert(0, ".")
+          from digital_twin.twin_registry import TwinRegistry
+
+          twin = TwinRegistry()
+          twin.load()
+          summary = twin.get_summary()
+          print(f"Webhook event processed:")
+          print(f"  Event type:    ${{ needs.route-event.outputs.event-type }}")
+          print(f"  Task ID:       ${{ needs.route-event.outputs.task-id }}")
+          print(f"  Pipeline:      ${{ needs.route-event.outputs.should-run-pipeline }}")
+          print(f"  Airtable sync: ${{ needs.route-event.outputs.should-sync-airtable }}")
+          print(f"  Twin state:    {json.dumps(summary, indent=2)}")
+          PYEOF
