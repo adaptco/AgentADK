@@ -56,23 +56,35 @@ class TestPerplexitySearchAgent:
     @pytest.mark.asyncio
     async def test_search_web_call(self):
         """Should call Perplexity API if live and local results are weak."""
-        # Patch httpx to simulate web request
-        with patch("integrations.perplexity.search_agent.httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client_cls.return_value.__aenter__.return_value = mock_client
-            
-            # Mock response
-            mock_resp = MagicMock()
-            mock_resp.json.return_value = {
-                "choices": [{"message": {"content": "Web result"}}]
-            }
-            mock_client.post.return_value = mock_resp
+        import integrations.perplexity.search_agent as sa_module
 
+        # Build a fake httpx module with an AsyncClient context manager
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "Web result"}}]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post.return_value = mock_resp
+
+        mock_async_client = MagicMock()
+        mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_async_client.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        fake_httpx = MagicMock()
+        fake_httpx.AsyncClient = mock_async_client
+
+        original_httpx = sa_module.httpx
+        sa_module.httpx = fake_httpx
+        try:
             agent = PerplexitySearchAgent(api_key="key")
+            agent._is_live = True  # Force live since httpx was None at init
             result = await agent.search("query")
-            
+
             assert result["source"] == "perplexity"
             assert result["web_results"][0]["text"] == "Web result"
+        finally:
+            sa_module.httpx = original_httpx
 
     @pytest.mark.asyncio
     async def test_search_offline_fallback(self):
