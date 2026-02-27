@@ -151,13 +151,7 @@ fi
 ############################################
 # Push
 ############################################
-read -p "Push merge commit to origin/${BASE_BRANCH}? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  git push origin "$BASE_BRANCH"
-else
-  echo "Push skipped. Run 'git push origin ${BASE_BRANCH}' manually."
-fi
+git push origin "$BASE_BRANCH"
 
 ############################################
 # Post-merge pointers
