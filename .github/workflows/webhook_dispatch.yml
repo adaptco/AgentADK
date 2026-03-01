@@ -7,6 +7,7 @@ on:
       - airtable_update
       - external_trigger
       - ci_rerun
+      - macchina_update
 
   workflow_dispatch:
     inputs:
@@ -25,7 +26,6 @@ env:
   PYTHON_VERSION: "3.11"
 
 jobs:
-
   # ── Parse and Route Event ───────────────────────────────────────────────────
   route-event:
     name: Route Webhook Event
@@ -35,6 +35,7 @@ jobs:
       task-id: ${{ steps.parse.outputs.task_id }}
       should-run-pipeline: ${{ steps.parse.outputs.should_run_pipeline }}
       should-sync-airtable: ${{ steps.parse.outputs.should_sync_airtable }}
+      should-sync-macchina: ${{ steps.parse.outputs.should_sync_macchina }}
 
     steps:
       - name: Parse event
@@ -57,23 +58,31 @@ jobs:
             webhook_event|external_trigger|manual_trigger)
               echo "should_run_pipeline=true" >> "$GITHUB_OUTPUT"
               echo "should_sync_airtable=true" >> "$GITHUB_OUTPUT"
+              echo "should_sync_macchina=false" >> "$GITHUB_OUTPUT"
               ;;
             airtable_update)
               echo "should_run_pipeline=false" >> "$GITHUB_OUTPUT"
               echo "should_sync_airtable=true" >> "$GITHUB_OUTPUT"
+              echo "should_sync_macchina=false" >> "$GITHUB_OUTPUT"
               ;;
             ci_rerun)
               echo "should_run_pipeline=true" >> "$GITHUB_OUTPUT"
               echo "should_sync_airtable=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_macchina=false" >> "$GITHUB_OUTPUT"
+              ;;
+            macchina_update)
+              echo "should_run_pipeline=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_airtable=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_macchina=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "should_run_pipeline=false" >> "$GITHUB_OUTPUT"
               echo "should_sync_airtable=false" >> "$GITHUB_OUTPUT"
+              echo "should_sync_macchina=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
           echo "Event: $EVENT_TYPE | Task: $TASK_ID"
-
 
   # ── Sync Airtable (if needed) ──────────────────────────────────────────────
   sync-airtable:
@@ -123,6 +132,62 @@ jobs:
           asyncio.run(sync())
           PYEOF
 
+  # ── Sync Macchina Projects (New) ───────────────────────────────────────────
+  sync-macchina:
+    name: Sync Macchina Projects
+    runs-on: ubuntu-latest
+    needs: route-event
+    if: needs.route-event.outputs.should-sync-macchina == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt httpx
+
+      - name: Sync Macchina tasks
+        run: |
+          python - << 'PYEOF'
+          import asyncio, sys, httpx
+          sys.path.insert(0, ".")
+          from digital_twin.twin_registry import TwinRegistry, TaskTwinNode
+
+          async def sync():
+              url = "https://api.macchinabc836fb4.com/projects"
+              print(f"Fetching projects from {url}...")
+              async with httpx.AsyncClient() as client:
+                  resp = await client.get(url)
+                  resp.raise_for_status()
+                  data = resp.json()
+              
+              twin = TwinRegistry()
+              twin.load()
+              
+              # Assuming list of project objects
+              count = 0
+              for item in data:
+                  # Map API fields to TwinNode (adjust keys as needed based on actual API response)
+                  t_id = item.get("id") or item.get("project_id")
+                  if t_id:
+                      twin.get().tasks[str(t_id)] = TaskTwinNode(
+                          task_id=str(t_id),
+                          name=item.get("name", "Untitled Macchina Project"),
+                          status=item.get("status", "todo"),
+                          # Defaulting browser actions as API schema is unknown
+                          browser_actions_total=0 
+                      )
+                      count += 1
+              
+              twin.save()
+              print(f"Synced {count} tasks from Macchina")
+
+          asyncio.run(sync())
+          PYEOF
 
   # ── Trigger Main Pipeline (if needed) ──────────────────────────────────────
   trigger-pipeline:
@@ -144,12 +209,11 @@ jobs:
 
           echo "Main pipeline dispatched"
 
-
   # ── Log Event ──────────────────────────────────────────────────────────────
   log-event:
     name: Log Webhook Event
     runs-on: ubuntu-latest
-    needs: [route-event, sync-airtable, trigger-pipeline]
+    needs: [route-event, sync-airtable, sync-macchina, trigger-pipeline]
     if: always()
 
     steps:
@@ -178,5 +242,6 @@ jobs:
           print(f"  Task ID:       ${{ needs.route-event.outputs.task-id }}")
           print(f"  Pipeline:      ${{ needs.route-event.outputs.should-run-pipeline }}")
           print(f"  Airtable sync: ${{ needs.route-event.outputs.should-sync-airtable }}")
+          print(f"  Macchina sync: ${{ needs.route-event.outputs.should-sync-macchina }}")
           print(f"  Twin state:    {json.dumps(summary, indent=2)}")
           PYEOF
