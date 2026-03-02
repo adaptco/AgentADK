@@ -8,6 +8,14 @@
             "type": "apache.camel",
             "request": "attach",
             "name": "Attach Camel Debugger"
+        },
+        {
+          "name": "Python: Debug Current File",
+          "type": "debugpy",
+          "request": "launch",
+          "program": "${file}",
+          "console": "integratedTerminal",
+          "justMyCode": true
         }
     ]
 }
