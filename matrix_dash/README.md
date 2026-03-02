@@ -1,6 +1,7 @@
 # Matrix Dash
 
-A standalone HTML5 Canvas web game with Geometry Dash style one-button runner mechanics and Matrix-inspired visuals.
+A standalone HTML5 Canvas web game with Geometry Dash style one-button
+runner mechanics and Matrix-inspired visuals.
 
 ## Run
 
