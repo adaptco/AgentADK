@@ -38,33 +38,33 @@ python rag/vertical_tensor_slice.py --query "how does IntentEngine route tasks"
 
 ### Table: Tasks
 
-| Field Name          | Type            | Notes                               |
-|---------------------|-----------------|-------------------------------------|
-| Name                | Single line     | Primary field                       |
-| Status              | Single select   | Backlog, Ready, In Progress, In Review, Done, Blocked |
-| Agent Role          | Single select   | managing_agent, orchestration_agent, architecture_agent, coder, tester, researcher, judge, digital_twin |
-| Workflow Stage      | Single select   | 1-Intake, 2-Research, 3-Architect, 4-Implement, 5-Verify, 6-Checkpoint, 7-Deploy |
-| Description         | Long text       | Full task description                |
-| Acceptance Criteria | Long text       | One criterion per line               |
-| Browser Steps       | Long text       | One Playwright action per line       |
-| GitHub Action       | Single line     | e.g. "ci.yml" or "a2a_twin_pipeline.yml" |
-| Office Checkpoint   | Single select   | (empty), word, excel, outlook, all  |
-| Related Tasks       | Link to Tasks   | Self-referential for dependencies    |
+| Field Name          | Type          | Notes                                                                                                      |
+| ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
+| Name                | Single line   | Primary field                                                                                              |
+| Status              | Single select | Backlog, Ready, In Progress, In Review, Done, Blocked                                                     |
+| Agent Role          | Single select | managing_agent, orchestration_agent, architecture_agent, coder, tester, researcher, judge, digital_twin |
+| Workflow Stage      | Single select | 1-Intake, 2-Research, 3-Architect, 4-Implement, 5-Verify, 6-Checkpoint, 7-Deploy                         |
+| Description         | Long text     | Full task description                                                                                      |
+| Acceptance Criteria | Long text     | One criterion per line                                                                                     |
+| Browser Steps       | Long text     | One Playwright action per line                                                                             |
+| GitHub Action       | Single line   | e.g. "ci.yml" or "a2a_twin_pipeline.yml"                                                                |
+| Office Checkpoint   | Single select | (empty), word, excel, outlook, all                                                                         |
+| Related Tasks       | Link to Tasks | Self-referential for dependencies                                                                          |
 
 ### Table: Roles
 
-| Field Name     | Type        | Notes                                    |
-|----------------|-------------|------------------------------------------|
-| Name           | Single line | Primary field                             |
-| Agent Class    | Single line | Python class name from agents/            |
-| System Prompt  | Long text   | Full system prompt for this role          |
-| Tools          | Long text   | Comma-separated tool names               |
-| MCP Tools      | Long text   | Comma-separated MCP tool names           |
+| Field Name    | Type        | Notes                            |
+| ------------- | ----------- | -------------------------------- |
+| Name          | Single line | Primary field                    |
+| Agent Class   | Single line | Python class name from agents/   |
+| System Prompt | Long text   | Full system prompt for this role |
+| Tools         | Long text   | Comma-separated tool names       |
+| MCP Tools     | Long text   | Comma-separated MCP tool names   |
 
 ### Table: Workflows
 
 | Field Name         | Type            | Notes                              |
-|--------------------|-----------------|------------------------------------|
+| ------------------ | --------------- | ---------------------------------- |
 | Name               | Single line     | Primary field                      |
 | Stages             | Multiple select | Same values as Task Workflow Stage |
 | Tasks              | Link to Tasks   | All tasks in this workflow         |
@@ -73,20 +73,20 @@ python rag/vertical_tensor_slice.py --query "how does IntentEngine route tasks"
 
 ### Table: Actions (for GitHub Actions tracking)
 
-| Field Name    | Type        | Notes                            |
-|---------------|-------------|----------------------------------|
-| Name          | Single line | e.g. "CI Run — abc1234"          |
-| Run ID        | Single line | GitHub Actions run ID             |
-| Status        | Single select | success, failure, in_progress   |
-| Triggered By  | Link to Tasks | Which task triggered this run   |
-| Run URL       | URL         | Link to GitHub Actions run       |
-| Timestamp     | Date        | When the run completed           |
+| Field Name   | Type          | Notes                         |
+| ------------ | ------------- | ----------------------------- |
+| Name         | Single line   | e.g. "CI Run — abc1234"       |
+| Run ID       | Single line   | GitHub Actions run ID         |
+| Status       | Single select | success, failure, in_progress |
+| Triggered By | Link to Tasks | Which task triggered this run |
+| Run URL      | URL           | Link to GitHub Actions run    |
+| Timestamp    | Date          | When the run completed        |
 
 ## Step 5: Add GitHub Secrets
 
 In your GitHub repo → Settings → Secrets → Actions:
 
-```
+```text
 OPENAI_API_KEY          — for embeddings
 AIRTABLE_API_KEY        — from airtable.com/account
 AIRTABLE_BASE_ID        — from airtable URL: airtable.com/appXXXXXXXX/...
@@ -138,11 +138,13 @@ Allowed `type` values:
 `feat`, `fix`, `ci`, `build`, `refactor`, `test`, `docs`, `chore`, `perf`, `revert`
 
 Subject rules:
+
 - Use imperative mood (`add`, `fix`, `update`)
 - No trailing period
 - Keep it at 72 chars or less when possible
 
 Optional body/footer fields in the template:
+
 - `Why`
 - `What changed`
 - `Validation`
@@ -201,6 +203,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 
 Now any LLM that speaks MCP (Claude, Cursor, VS Code Copilot, etc.) can:
+
 - `search_repo` — NDP search over your entire codebase
 - `spawn_agent` — Spawn any A2A subagent by task description
 - `get_twin_state` — See live task/agent/CI status
@@ -211,7 +214,7 @@ Now any LLM that speaks MCP (Claude, Cursor, VS Code Copilot, etc.) can:
 
 ## Mental Model: How a long-horizon task flows
 
-```
+```text
 You type: "Implement the Postgres ArtifactStore replacing InMemoryArtifactStore"
     ↓
 bootstrap_digital_twin.py (MCP server)
