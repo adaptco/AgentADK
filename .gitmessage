@@ -1,0 +1,51 @@
+# Conventional Commit template for A2A Digital Twin
+#
+# Format:
+#   <type>(<scope>): <subject>
+#
+# Allowed types:
+#   feat     New user-visible behavior
+#   fix      Bug fix
+#   ci       CI/CD pipeline or automation changes
+#   build    Build system or dependency changes
+#   refactor Internal code change without behavior change
+#   test     Test-only changes
+#   docs     Documentation-only changes
+#   chore    Maintenance that does not fit other types
+#   perf     Performance improvements
+#   revert   Revert a previous commit
+#
+# Subject rules:
+# - Use imperative mood (e.g., "add", "fix", "update")
+# - No trailing period
+# - Target <= 72 characters
+#
+# Example:
+#   ci(webhook): route dispatch to production workflow
+#
+# Optional body/footer sections for automation:
+# Why:
+# - <why this change is needed>
+#
+# What changed:
+# - <behavior/code changes introduced>
+#
+# Validation:
+# - <tests/checks/commands run>
+#
+# Refs: #123
+# BREAKING CHANGE: <describe incompatible API or behavior change>
+
+<type>(<scope>): <subject>
+
+# Why:
+# -
+#
+# What changed:
+# -
+#
+# Validation:
+# -
+#
+# Refs: #
+# BREAKING CHANGE:

@@ -107,6 +107,68 @@ git commit -m "feat: add A2A digital twin pipeline"
 git push
 ```
 
+## Commit Message Template (Recommended)
+
+This repo includes a reusable commit template at `.gitmessage` based on Conventional Commits.
+
+### One-time local setup
+
+Run from the repo root:
+
+```bash
+git config commit.template .gitmessage
+git config --get commit.template
+```
+
+Expected output:
+
+```text
+.gitmessage
+```
+
+### Commit grammar
+
+Use this first line format:
+
+```text
+<type>(<scope>): <subject>
+```
+
+Allowed `type` values:
+`feat`, `fix`, `ci`, `build`, `refactor`, `test`, `docs`, `chore`, `perf`, `revert`
+
+Subject rules:
+- Use imperative mood (`add`, `fix`, `update`)
+- No trailing period
+- Keep it at 72 chars or less when possible
+
+Optional body/footer fields in the template:
+- `Why`
+- `What changed`
+- `Validation`
+- `Refs`
+- `BREAKING CHANGE`
+
+### Usage behavior
+
+- `git commit` opens `.gitmessage` in your editor.
+- `git commit -m "..."` bypasses the template.
+
+### Copy/paste examples
+
+```bash
+git commit -m "feat(rag): add deterministic reranking for retrieval"
+git commit -m "fix(webhooks): handle missing task_id in dispatch payload"
+git commit -m "ci(github-actions): split lint and tests into separate jobs"
+```
+
+### Troubleshooting
+
+- If the template does not appear, confirm local config with `git config --local --get commit.template`.
+- Confirm you are committing from this repository and not a different checkout.
+- Verify your editor is configured for Git commit messages and did not abort on empty content.
+- To test template rendering directly, run `git commit --allow-empty` and check the opened draft.
+
 ## Step 7: Start the MCP Server
 
 ```bash
