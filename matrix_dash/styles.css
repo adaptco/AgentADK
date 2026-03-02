@@ -1,0 +1,289 @@
+:root {
+  --bg-0: #020804;
+  --bg-1: #030d08;
+  --bg-2: #0a1e12;
+  --matrix-0: #57ff9d;
+  --matrix-1: #2ecf74;
+  --matrix-2: #98ffcc;
+  --danger: #ff4559;
+  --frame: rgba(113, 255, 168, 0.26);
+  --panel: rgba(1, 22, 12, 0.82);
+  --text-0: #d6ffe9;
+  --text-1: #9ad8b4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Share Tech Mono", monospace;
+  color: var(--text-0);
+  background:
+    radial-gradient(1200px 700px at 18% 0%, rgba(82, 255, 145, 0.17), transparent 70%),
+    radial-gradient(800px 500px at 84% 100%, rgba(50, 197, 110, 0.16), transparent 70%),
+    linear-gradient(180deg, var(--bg-2), var(--bg-0) 72%);
+  overflow-x: hidden;
+}
+
+.noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(140, 255, 180, 0.02) 0 1px,
+      transparent 1px 4px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.45;
+}
+
+.app {
+  width: min(1200px, 96vw);
+  margin: 0 auto;
+  padding: 2.1rem 0 2.5rem;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 1.2rem;
+  animation: boot-in 650ms ease-out both;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.25rem;
+  text-transform: uppercase;
+  color: var(--matrix-2);
+  font-size: 0.78rem;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Orbitron", "Share Tech Mono", monospace;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: clamp(1.6rem, 5vw, 3.4rem);
+  color: #d4ffe6;
+  text-shadow:
+    0 0 12px rgba(67, 255, 149, 0.52),
+    0 0 32px rgba(44, 224, 120, 0.36);
+}
+
+.subtitle {
+  margin: 0.62rem auto 0;
+  max-width: 42ch;
+  color: var(--text-1);
+  font-size: clamp(0.95rem, 2.2vw, 1.05rem);
+}
+
+.game-shell {
+  position: relative;
+  border: 1px solid var(--frame);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(3, 26, 14, 0.78), rgba(1, 8, 5, 0.92));
+  box-shadow:
+    0 0 0 1px rgba(124, 255, 174, 0.18) inset,
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 90px rgba(42, 224, 121, 0.18);
+  overflow: hidden;
+  animation: rise-up 700ms 120ms ease-out both;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.8rem;
+  background: linear-gradient(180deg, rgba(8, 36, 20, 0.62), rgba(5, 25, 14, 0.17));
+  border-bottom: 1px solid rgba(102, 255, 164, 0.24);
+}
+
+.panel {
+  min-height: 3.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.5rem 0.72rem;
+  border: 1px solid rgba(110, 255, 170, 0.2);
+  border-radius: 11px;
+  background: var(--panel);
+}
+
+.panel:nth-child(1) {
+  animation: fade-slide 560ms 200ms both ease;
+}
+
+.panel:nth-child(2) {
+  animation: fade-slide 560ms 280ms both ease;
+}
+
+.panel:nth-child(3) {
+  animation: fade-slide 560ms 360ms both ease;
+}
+
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  color: var(--text-1);
+  font-size: 0.68rem;
+}
+
+.value {
+  margin-top: 0.15rem;
+  color: #edfff6;
+  font-family: "Orbitron", "Share Tech Mono", monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.value-small {
+  font-size: clamp(0.78rem, 2vw, 1rem);
+  letter-spacing: 0.01rem;
+  font-family: "Share Tech Mono", monospace;
+}
+
+.panel-wide {
+  align-items: flex-end;
+}
+
+.canvas-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: #020905;
+}
+
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.message {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: min(88%, 760px);
+  color: #d7ffe8;
+  font-family: "Orbitron", "Share Tech Mono", monospace;
+  font-size: clamp(1rem, 2.2vw, 1.6rem);
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  text-shadow: 0 0 12px rgba(67, 255, 149, 0.62);
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.message.hidden {
+  opacity: 0;
+  transform: translate(-50%, -54%);
+}
+
+.message .hint {
+  display: block;
+  margin-top: 0.6rem;
+  font-family: "Share Tech Mono", monospace;
+  font-size: clamp(0.82rem, 1.8vw, 1rem);
+  letter-spacing: 0.04em;
+  color: var(--matrix-2);
+}
+
+.jump-button {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  width: clamp(84px, 18vw, 120px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(132, 255, 184, 0.38);
+  background:
+    radial-gradient(circle at 50% 36%, rgba(124, 255, 175, 0.27), rgba(4, 28, 14, 0.88));
+  color: #e4fff0;
+  font-family: "Orbitron", "Share Tech Mono", monospace;
+  font-size: clamp(0.9rem, 3vw, 1.05rem);
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 0 16px rgba(89, 255, 152, 0.35),
+    0 6px 22px rgba(0, 0, 0, 0.4);
+  touch-action: manipulation;
+  user-select: none;
+  display: none;
+}
+
+.jump-button:active {
+  transform: scale(0.96);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .jump-button {
+    display: block;
+  }
+}
+
+@media (max-width: 900px) {
+  .app {
+    width: min(1200px, 98vw);
+    padding-top: 1.2rem;
+  }
+
+  .hud {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .panel-wide {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+  }
+}
+
+@keyframes boot-in {
+  from {
+    opacity: 0;
+    transform: translateY(-9px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes rise-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
