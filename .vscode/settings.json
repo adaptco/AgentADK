@@ -2,5 +2,6 @@
     "github-actions.workflows.pinned.workflows": [
         ".github/workflows/webhook_dispatch.yml",
         ".github/workflows/pr_validation.yml"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }
