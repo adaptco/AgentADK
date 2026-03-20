@@ -1,6 +1,7 @@
 # Unity MLOps Setup
 
-This repository includes a lightweight autonomous Unity training orchestration module: `mlops_unity_pipeline.py`.
+This repository includes a lightweight autonomous Unity training orchestration
+module: `mlops_unity_pipeline.py`.
 
 ## Quick start
 
@@ -8,7 +9,12 @@ This repository includes a lightweight autonomous Unity training orchestration m
 pip install pyyaml croniter
 python - <<'PY'
 import asyncio
-from mlops_unity_pipeline import UnityMLOpsOrchestrator, UnityAssetSpec, RLTrainingConfig, TrainingJob
+from mlops_unity_pipeline import (
+    UnityMLOpsOrchestrator,
+    UnityAssetSpec,
+    RLTrainingConfig,
+    TrainingJob,
+)
 
 async def main():
     orchestrator = UnityMLOpsOrchestrator()
@@ -19,7 +25,9 @@ async def main():
         description="Reach target position",
     )
     config = RLTrainingConfig(algorithm="PPO", max_steps=100_000)
-    result = await orchestrator.execute_training_job(TrainingJob("test-job", asset, config))
+    result = await orchestrator.execute_training_job(
+        TrainingJob("test-job", asset, config)
+    )
     print(result)
 
 asyncio.run(main())
@@ -36,4 +44,7 @@ PY
 ## Notes
 
 - The current implementation is a scaffold with deterministic local artifacts.
-- Replace `_generate_unity_code`, `_build_unity_environment`, `_train_agent`, and `_register_model` with production integrations for your environment (LLM provider, Unity headless build command, ML-Agents trainer command, and Vertex AI SDK).
+- Replace `_generate_unity_code`, `_build_unity_environment`, `_train_agent`,
+  and `_register_model` with production integrations for your environment
+  (LLM provider, Unity headless build command, ML-Agents trainer command,
+  and Vertex AI SDK).

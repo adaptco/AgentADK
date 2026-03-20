@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Matrix Dash Tests</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.20.1.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture">
+    <div class="noise"></div>
+    <main class="app">
+      <header class="hero">
+        <p class="eyebrow">Canvas Runner Simulation</p>
+        <h1>Matrix Dash</h1>
+        <p class="subtitle">
+          Dodge the kill code. Stay in sync.
+        </p>
+      </header>
+
+      <section class="game-shell">
+        <div class="hud">
+          <div class="panel">
+            <span class="label">Score</span>
+            <span id="scoreValue" class="value">0</span>
+          </div>
+          <div class="panel">
+            <span class="label">Best</span>
+            <span id="bestValue" class="value">0</span>
+          </div>
+          <div class="panel panel-wide">
+            <span class="label">Controls</span>
+            <span class="value value-small">Space / Arrow Up / Tap</span>
+          </div>
+        </div>
+
+        <div class="canvas-frame" id="canvasFrame">
+          <canvas id="gameCanvas" aria-label="Matrix Dash game canvas"></canvas>
+          <div id="messageOverlay" class="message"></div>
+          <button id="jumpButton" class="jump-button" type="button">JUMP</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://code.jquery.com/qunit/qunit-2.20.1.js"></script>
+  <script src="./game.js"></script>
+  <script src="./test.js"></script>
+</body>
+</html>

@@ -16,7 +16,8 @@ Use a codespace for **`Q-Enterprises/.github`**.
 
 - Codespaces are created per repository, not per organization.
 - Your active issue context is in `Q-Enterprises/.github`.
-- The landing page lists templates/options, but repository context determines the right codespace.
+- The landing page lists templates/options,
+  but repository context determines the right codespace.
 - To guarantee the correct target, start creation from the repository page.
 
 ## How to open it
@@ -26,4 +27,6 @@ Use a codespace for **`Q-Enterprises/.github`**.
 3. Open the **Codespaces** tab.
 4. Click **Create codespace on main**.
 
-If you later switch to work in another repository (for example, a physics-drift pipeline repo), create and use a codespace for that specific repository instead.
+If you later switch to work in another repository
+(for example, a physics-drift pipeline repo),
+create and use a codespace for that specific repository instead.

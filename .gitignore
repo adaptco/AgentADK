@@ -1,0 +1,11 @@
+# Python bytecode and cache outputs
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest cache
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/

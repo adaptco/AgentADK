@@ -1,4 +1,4 @@
-(function () {
+window.MatrixDash = (function () {
   "use strict";
 
   const LOGICAL_WIDTH = 1280;
@@ -46,6 +46,7 @@
   }
 
   function updateOverlay(html, hidden) {
+    if (!messageOverlay) return;
     messageOverlay.innerHTML = html;
     messageOverlay.classList.toggle("hidden", hidden);
   }
@@ -112,7 +113,7 @@
     player.grounded = true;
     player.rotation = 0;
 
-    scoreValue.textContent = "0";
+    if(scoreValue) scoreValue.textContent = "0";
     setReadyOverlay();
   }
 
@@ -231,7 +232,7 @@
     if (score > bestScore) {
       bestScore = score;
       localStorage.setItem(STORAGE_KEY, String(bestScore));
-      bestValue.textContent = String(bestScore);
+      if(bestValue) bestValue.textContent = String(bestScore);
     }
 
     for (let i = 0; i < 28; i += 1) {
@@ -370,7 +371,7 @@
     checkCollisions();
 
     score = Math.floor(gameTime * 100 + worldSpeed * 0.05);
-    scoreValue.textContent = String(score);
+    if(scoreValue) scoreValue.textContent = String(score);
   }
 
   function drawBackground() {
@@ -536,6 +537,7 @@
   }
 
   function render() {
+    if (!ctx) return;
     drawBackground();
     drawFloor();
 
@@ -567,23 +569,46 @@
     triggerJump();
   }
 
-  window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("keydown", (evt) => {
-    const code = evt.code;
-    if (code === "Space" || code === "ArrowUp" || code === "KeyW") {
-      evt.preventDefault();
-      triggerJump();
-    }
-  }, { passive: false });
+  if (canvas) {
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("keydown", (evt) => {
+      const code = evt.code;
+      if (code === "Space" || code === "ArrowUp" || code === "KeyW") {
+        evt.preventDefault();
+        triggerJump();
+      }
+    }, { passive: false });
 
-  canvas.addEventListener("pointerdown", onInput, { passive: false });
-  jumpButton.addEventListener("pointerdown", onInput, { passive: false });
+    canvas.addEventListener("pointerdown", onInput, { passive: false });
+    jumpButton.addEventListener("pointerdown", onInput, { passive: false });
 
-  initializeColumns();
-  resizeCanvas();
-  resetGame();
-  requestAnimationFrame((t) => {
-    lastTime = t;
-    requestAnimationFrame(frame);
-  });
+    initializeColumns();
+    resizeCanvas();
+    resetGame();
+    requestAnimationFrame((t) => {
+      lastTime = t;
+      requestAnimationFrame(frame);
+    });
+  }
+
+  return {
+    // Expose variables
+    get gameState() { return gameState; },
+    get player() { return player; },
+    get obstacles() { return obstacles; },
+    
+    // Expose functions
+    resetGame,
+    triggerJump,
+    spawnObstacle,
+    update,
+    checkCollisions,
+    floorY,
+    toRect,
+    intersects,
+    crash,
+    updatePlayer,
+    updateObstacles,
+    LOGICAL_WIDTH,
+  };
 })();
